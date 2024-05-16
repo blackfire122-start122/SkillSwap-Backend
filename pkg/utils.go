@@ -1,9 +1,11 @@
 package pkg
 
 import (
+	"crypto/rand"
 	"errors"
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
+	"math/big"
 	"net/http"
 	"os"
 )
@@ -15,12 +17,12 @@ type UserLogin struct {
 	Password string
 }
 
-func Login(w http.ResponseWriter, r *http.Request, userLogin *UserLogin) bool {
+func Login(w http.ResponseWriter, r *http.Request, userLogin *UserLogin) error {
 	session, _ := store.Get(r, "session-name")
 
 	var user User
 	if err := DB.First(&user, "Username = ?", userLogin.Username).Error; err != nil {
-		return false
+		return err
 	}
 
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(userLogin.Password))
@@ -29,13 +31,13 @@ func Login(w http.ResponseWriter, r *http.Request, userLogin *UserLogin) bool {
 		session.Values["password"] = user.Password
 		err = session.Save(r, w)
 		if err != nil {
-			return false
+			return err
 		}
 	} else {
-		return false
+		return err
 	}
 
-	return true
+	return nil
 }
 
 func Sign(user *UserLogin) error {
@@ -99,4 +101,47 @@ func Logout(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 	return true
+}
+
+type ChangedUser struct {
+	Username string
+	Email    string
+	Phone    string
+}
+
+func ChangeUser(changedUser *ChangedUser, user User) error {
+	var users []User
+
+	if err := DB.Where("Username = ?", changedUser.Username).Find(&users).Error; err != nil {
+		return err
+	}
+
+	if len(users) > 0 {
+		if users[0].Id != user.Id {
+			return errors.New("user with the same username already exists")
+		}
+	}
+
+	user.Username = changedUser.Username
+	user.Email = changedUser.Email // ToDo need check on unique
+	user.Phone = changedUser.Phone // ToDo need check on unique
+
+	if err := DB.Save(&user).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GenerateSalt() string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	randomString := make([]byte, 10)
+	for i := range randomString {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			panic(err)
+		}
+		randomString[i] = charset[num.Int64()]
+	}
+	return string(randomString)
 }
