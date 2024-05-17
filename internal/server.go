@@ -5,7 +5,7 @@ import (
 )
 
 func SetRouters(router *gin.Engine) {
-	router.GET("api/v1/user/image/:filename", GetImageUser)
+	router.GET("api/v1/user/image/:filename", GetImageUser) // ToDo nginx
 	router.GET("ws/:roomId", handleConnections)
 	router.GET("api/v1/user/getUser", GetUser)
 	router.POST("api/v1/user/changeUser", ChangeData)
