@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 func GetImageUser(c *gin.Context) {
@@ -184,4 +185,28 @@ func SetUserImage(c *gin.Context) {
 	}
 
 	c.Writer.WriteHeader(http.StatusOK)
+}
+
+func FindSkills(c *gin.Context) {
+	skillName := strings.ToLower(c.Query("skillName"))
+
+	var skills []Skill
+
+	if err := DB.Where("LOWER(name) LIKE ?", "%"+skillName+"%").Find(&skills).Error; err != nil {
+		fmt.Println(err)
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp := make([]map[string]string, 0)
+
+	for _, skill := range skills {
+		item := make(map[string]string)
+		item["id"] = strconv.FormatUint(skill.Id, 10)
+		item["name"] = skill.Name
+
+		resp = append(resp, item)
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
