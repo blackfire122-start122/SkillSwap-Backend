@@ -106,10 +106,11 @@ func Logout(w http.ResponseWriter, r *http.Request) bool {
 }
 
 type ChangedUser struct {
-	Username string
-	Email    string
-	Phone    string
-	Skills   []string
+	Username   string
+	Email      string
+	Phone      string
+	Skills     []string
+	Categories []string
 }
 
 func ChangeUser(changedUser *ChangedUser, user User) error {
@@ -125,19 +126,15 @@ func ChangeUser(changedUser *ChangedUser, user User) error {
 		}
 	}
 
-	var skillIds []uint64
+	skills, err := GetSkills(changedUser)
 
-	for _, skill := range changedUser.Skills {
-		skillId, err := strconv.ParseUint(skill, 10, 64)
-		if err != nil {
-			return err
-		}
-		skillIds = append(skillIds, skillId)
+	if err != nil {
+		return err
 	}
 
-	var skills []Skill
+	categories, err := GetCategories(changedUser)
 
-	if err := DB.Where("Id in ?", skillIds).Find(&skills).Error; err != nil {
+	if err != nil {
 		return err
 	}
 
@@ -153,12 +150,57 @@ func ChangeUser(changedUser *ChangedUser, user User) error {
 			return err
 		}
 
+		if err := tx.Model(&user).Association("Categories").Clear(); err != nil {
+			return err
+		}
+		if err := tx.Model(&user).Association("Categories").Append(categories); err != nil {
+			return err
+		}
+
 		if err := tx.Save(&user).Error; err != nil {
 			return err
 		}
 
 		return nil
 	})
+}
+
+func GetSkills(changedUser *ChangedUser) ([]Skill, error) {
+	var skillIds []uint64
+	var skills []Skill
+
+	for _, skill := range changedUser.Skills {
+		skillId, err := strconv.ParseUint(skill, 10, 64)
+		if err != nil {
+			return skills, err
+		}
+		skillIds = append(skillIds, skillId)
+	}
+
+	if err := DB.Where("Id in ?", skillIds).Find(&skills).Error; err != nil {
+		return skills, err
+	}
+
+	return skills, nil
+}
+
+func GetCategories(changedUser *ChangedUser) ([]Category, error) {
+	var CategoryIds []uint64
+	var categories []Category
+
+	for _, category := range changedUser.Categories {
+		categoryId, err := strconv.ParseUint(category, 10, 64)
+		if err != nil {
+			return categories, err
+		}
+		CategoryIds = append(CategoryIds, categoryId)
+	}
+
+	if err := DB.Where("Id in ?", CategoryIds).Find(&categories).Error; err != nil {
+		return categories, err
+	}
+
+	return categories, nil
 }
 
 func GenerateSalt() string {

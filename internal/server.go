@@ -14,5 +14,6 @@ func SetRouters(router *gin.Engine) {
 	router.GET("api/v1/user/logout", LogoutUser)
 	router.GET("api/v1/bestPerformers", GetBestPerformers)
 	router.GET("api/v1/findSkills", FindSkills)
+	router.GET("api/v1/findCategories", FindCategories)
 
 }

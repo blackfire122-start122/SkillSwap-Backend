@@ -30,6 +30,11 @@ func GetUser(c *gin.Context) {
 		return
 	}
 
+	if err := DB.Preload("Categories").Find(&user).Error; err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	skills := make([]map[string]string, 0)
 
 	for _, skill := range user.Skills {
@@ -41,6 +46,35 @@ func GetUser(c *gin.Context) {
 		skills = append(skills, item)
 	}
 
+	categories := make([]map[string]interface{}, 0)
+
+	for _, category := range user.Categories {
+		item := make(map[string]interface{})
+
+		item["id"] = strconv.FormatUint(category.Id, 10)
+		item["name"] = category.Name
+
+		if err := DB.Preload("Skills").Find(&category).Error; err != nil {
+			c.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		categorySkills := make([]map[string]string, 0)
+
+		for _, skill := range category.Skills {
+			itemSkill := make(map[string]string)
+
+			itemSkill["id"] = strconv.FormatUint(skill.Id, 10)
+			itemSkill["name"] = skill.Name
+
+			categorySkills = append(categorySkills, itemSkill)
+		}
+
+		item["skills"] = categorySkills
+
+		categories = append(categories, item)
+	}
+
 	resp := make(map[string]interface{})
 	resp["id"] = strconv.FormatUint(user.Id, 10)
 	resp["username"] = user.Username
@@ -48,6 +82,7 @@ func GetUser(c *gin.Context) {
 	resp["email"] = user.Email
 	resp["phone"] = user.Phone
 	resp["skills"] = skills
+	resp["categories"] = categories
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -221,6 +256,43 @@ func FindSkills(c *gin.Context) {
 		item := make(map[string]string)
 		item["id"] = strconv.FormatUint(skill.Id, 10)
 		item["name"] = skill.Name
+
+		resp = append(resp, item)
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func FindCategories(c *gin.Context) {
+	categoryName := strings.ToLower(c.Query("categoryName"))
+
+	var categories []Category
+
+	if err := DB.Where("LOWER(name) LIKE ?", "%"+categoryName+"%").Preload("Skills").Find(&categories).Error; err != nil {
+		fmt.Println(err)
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp := make([]map[string]interface{}, 0)
+
+	for _, category := range categories {
+		item := make(map[string]interface{})
+		item["id"] = strconv.FormatUint(category.Id, 10)
+		item["name"] = category.Name
+
+		categorySkills := make([]map[string]string, 0)
+
+		for _, skill := range category.Skills {
+			itemSkill := make(map[string]string)
+
+			itemSkill["id"] = strconv.FormatUint(skill.Id, 10)
+			itemSkill["name"] = skill.Name
+
+			categorySkills = append(categorySkills, itemSkill)
+		}
+
+		item["skills"] = categorySkills
 
 		resp = append(resp, item)
 	}
