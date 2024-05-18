@@ -41,7 +41,7 @@ type PriceSkill struct {
 }
 
 func init() {
-	db, err := gorm.Open(sqlite.Open("database.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("database.db"), &gorm.Config{}) //ToDo change on postgres
 	DB = db
 
 	if err != nil {

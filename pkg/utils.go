@@ -5,9 +5,11 @@ import (
 	"errors"
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 	"math/big"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 var store = sessions.NewCookieStore([]byte(os.Getenv("SECRET_KEY")))
@@ -107,6 +109,7 @@ type ChangedUser struct {
 	Username string
 	Email    string
 	Phone    string
+	Skills   []string
 }
 
 func ChangeUser(changedUser *ChangedUser, user User) error {
@@ -122,15 +125,40 @@ func ChangeUser(changedUser *ChangedUser, user User) error {
 		}
 	}
 
-	user.Username = changedUser.Username
-	user.Email = changedUser.Email // ToDo need check on unique
-	user.Phone = changedUser.Phone // ToDo need check on unique
+	var skillIds []uint64
 
-	if err := DB.Save(&user).Error; err != nil {
+	for _, skill := range changedUser.Skills {
+		skillId, err := strconv.ParseUint(skill, 10, 64)
+		if err != nil {
+			return err
+		}
+		skillIds = append(skillIds, skillId)
+	}
+
+	var skills []Skill
+
+	if err := DB.Where("Id in ?", skillIds).Find(&skills).Error; err != nil {
 		return err
 	}
 
-	return nil
+	return DB.Transaction(func(tx *gorm.DB) error {
+		user.Username = changedUser.Username
+		user.Email = changedUser.Email // ToDo need check on unique
+		user.Phone = changedUser.Phone // ToDo need check on unique
+
+		if err := tx.Model(&user).Association("Skills").Clear(); err != nil {
+			return err
+		}
+		if err := tx.Model(&user).Association("Skills").Append(skills); err != nil {
+			return err
+		}
+
+		if err := tx.Save(&user).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func GenerateSalt() string {

@@ -25,12 +25,29 @@ func GetUser(c *gin.Context) {
 		return
 	}
 
-	resp := make(map[string]string)
+	if err := DB.Preload("Skills").Find(&user).Error; err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	skills := make([]map[string]string, 0)
+
+	for _, skill := range user.Skills {
+		item := make(map[string]string)
+
+		item["id"] = strconv.FormatUint(skill.Id, 10)
+		item["name"] = skill.Name
+
+		skills = append(skills, item)
+	}
+
+	resp := make(map[string]interface{})
 	resp["id"] = strconv.FormatUint(user.Id, 10)
 	resp["username"] = user.Username
 	resp["image"] = user.Image
 	resp["email"] = user.Email
 	resp["phone"] = user.Phone
+	resp["skills"] = skills
 
 	c.JSON(http.StatusOK, resp)
 }
