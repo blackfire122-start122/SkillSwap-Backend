@@ -17,6 +17,33 @@ func GetImageUser(c *gin.Context) {
 	c.File("media/users/" + c.Param("filename"))
 }
 
+func GetPriceSkills(c *gin.Context) {
+	loginUser, user := CheckSessionUser(c.Request)
+
+	if !loginUser {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if err := DB.Preload("PricesSkills").Find(&user).Error; err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp := make([]map[string]interface{}, 0)
+
+	for _, priceSkill := range user.PricesSkills {
+		item := make(map[string]interface{})
+
+		item["Price"] = priceSkill.Price
+		item["SkillId"] = priceSkill.SkillId
+
+		resp = append(resp, item)
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
 func GetUser(c *gin.Context) {
 	loginUser, user := CheckSessionUser(c.Request)
 
@@ -25,12 +52,7 @@ func GetUser(c *gin.Context) {
 		return
 	}
 
-	if err := DB.Preload("Skills").Find(&user).Error; err != nil {
-		c.Writer.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := DB.Preload("Categories").Find(&user).Error; err != nil {
+	if err := DB.Preload("Skills").Preload("Categories").Find(&user).Error; err != nil {
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -175,6 +197,7 @@ func ChangeData(c *gin.Context) {
 	bodyBytes, _ := io.ReadAll(c.Request.Body)
 
 	if err := json.Unmarshal(bodyBytes, &changedUser); err != nil {
+		fmt.Println(err)
 		c.Writer.WriteHeader(http.StatusBadRequest)
 		return
 	}

@@ -111,6 +111,7 @@ type ChangedUser struct {
 	Phone      string
 	Skills     []string
 	Categories []string
+	Prices     map[uint64]uint64
 }
 
 func ChangeUser(changedUser *ChangedUser, user User) error {
@@ -143,6 +144,17 @@ func ChangeUser(changedUser *ChangedUser, user User) error {
 		user.Email = changedUser.Email // ToDo need check on unique
 		user.Phone = changedUser.Phone // ToDo need check on unique
 
+		var priceSkills []PriceSkill
+
+		for id, price := range changedUser.Prices {
+			var skill Skill
+			if err := DB.Where("Id = ?", id).First(&skill).Error; err != nil {
+				return err
+			}
+
+			priceSkills = append(priceSkills, PriceSkill{UserID: user.Id, Skill: skill, Price: price})
+		}
+
 		if err := tx.Model(&user).Association("Skills").Clear(); err != nil {
 			return err
 		}
@@ -155,6 +167,16 @@ func ChangeUser(changedUser *ChangedUser, user User) error {
 		}
 		if err := tx.Model(&user).Association("Categories").Append(categories); err != nil {
 			return err
+		}
+
+		if err := tx.Unscoped().Model(&user).Association("PricesSkills").Unscoped().Clear(); err != nil {
+			return err
+		}
+
+		if len(priceSkills) > 0 {
+			if err := tx.Create(&priceSkills).Error; err != nil {
+				return err
+			}
 		}
 
 		if err := tx.Save(&user).Error; err != nil {

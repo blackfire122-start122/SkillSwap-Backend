@@ -9,16 +9,16 @@ var DB *gorm.DB
 
 type User struct {
 	gorm.Model
-	Id         uint64 `gorm:"primaryKey"`
-	Username   string
-	Password   string
-	Email      string
-	Phone      string
-	Image      string
-	Rating     uint8
-	Skills     []Skill      `gorm:"many2many:user_skills;"`
-	Categories []Category   `gorm:"many2many:categories_user;"`
-	PriceSkill []PriceSkill `gorm:"many2many:price_skills;"`
+	Id           uint64 `gorm:"primaryKey"`
+	Username     string
+	Password     string
+	Email        string
+	Phone        string
+	Image        string
+	Rating       uint8
+	Skills       []Skill      `gorm:"many2many:user_skills;"`
+	Categories   []Category   `gorm:"many2many:categories_user;"`
+	PricesSkills []PriceSkill `gorm:"foreignKey:UserID;"`
 }
 
 type Category struct {
@@ -36,8 +36,10 @@ type Skill struct {
 
 type PriceSkill struct {
 	gorm.Model
-	Id    uint64 `gorm:"primaryKey"`
-	price uint64
+	UserID  uint64
+	SkillId uint64
+	Skill   Skill `gorm:"foreignKey:SkillId;"`
+	Price   uint64
 }
 
 func init() {
@@ -48,7 +50,7 @@ func init() {
 		panic("failed to connect database")
 	}
 
-	err = DB.AutoMigrate(&User{}, &Category{}, Skill{})
+	err = DB.AutoMigrate(&User{}, &Category{}, Skill{}, PriceSkill{})
 	if err != nil {
 		panic("Error autoMigrate: ")
 	}
