@@ -13,6 +13,7 @@ func SetRouters(router *gin.Engine) {
 	router.POST("api/v1/user/setImage", SetUserImage)
 	router.POST("api/v1/user/login", LoginUser)
 	router.GET("api/v1/user/logout", LogoutUser)
+	router.GET("api/v1/user/findAll", FindAll)
 	router.GET("api/v1/bestPerformers", GetBestPerformers)
 	router.GET("api/v1/findSkills", FindSkills)
 	router.GET("api/v1/findCategories", FindCategories)

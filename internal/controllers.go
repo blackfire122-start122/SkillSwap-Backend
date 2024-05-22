@@ -322,3 +322,39 @@ func FindCategories(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
+
+func FindAll(c *gin.Context) {
+	find := strings.ToLower(c.Query("find"))
+
+	resp := make(map[string]interface{})
+
+	usersResp, err := FindUsers(find)
+	skillResp := make([]map[string]string, 0)
+	categoryResp := make([]map[string]string, 0)
+
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if len(usersResp) <= 5 {
+		categoryResp, err = FindCategoriesAll(find)
+		if err != nil {
+			c.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	if len(usersResp)+len(categoryResp) <= 5 {
+		skillResp, err = FindSkillAll(find)
+		if err != nil {
+			c.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	resp["users"] = usersResp
+	resp["categories"] = categoryResp
+	resp["skills"] = skillResp
+
+	c.JSON(http.StatusOK, resp)
+}
