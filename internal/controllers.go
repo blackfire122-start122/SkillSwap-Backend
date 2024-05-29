@@ -3,8 +3,10 @@ package internal
 import (
 	. "SkillSwap/pkg"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"io"
 	"net/http"
 	"os"
@@ -52,59 +54,35 @@ func GetUser(c *gin.Context) {
 		return
 	}
 
-	if err := DB.Preload("Skills").Preload("Categories").Find(&user).Error; err != nil {
+	resp, err := GetUserData(user)
+
+	if err != nil {
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	skills := make([]map[string]string, 0)
+	c.JSON(http.StatusOK, resp)
+}
 
-	for _, skill := range user.Skills {
-		item := make(map[string]string)
+func GetUserDataUnauthorized(c *gin.Context) {
+	userName := c.Param("userName")
 
-		item["id"] = strconv.FormatUint(skill.Id, 10)
-		item["name"] = skill.Name
-
-		skills = append(skills, item)
-	}
-
-	categories := make([]map[string]interface{}, 0)
-
-	for _, category := range user.Categories {
-		item := make(map[string]interface{})
-
-		item["id"] = strconv.FormatUint(category.Id, 10)
-		item["name"] = category.Name
-
-		if err := DB.Preload("Skills").Find(&category).Error; err != nil {
-			c.Writer.WriteHeader(http.StatusInternalServerError)
+	var user User
+	if err := DB.Where("username=?", userName).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Writer.WriteHeader(http.StatusNotFound)
 			return
 		}
-
-		categorySkills := make([]map[string]string, 0)
-
-		for _, skill := range category.Skills {
-			itemSkill := make(map[string]string)
-
-			itemSkill["id"] = strconv.FormatUint(skill.Id, 10)
-			itemSkill["name"] = skill.Name
-
-			categorySkills = append(categorySkills, itemSkill)
-		}
-
-		item["skills"] = categorySkills
-
-		categories = append(categories, item)
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
-	resp := make(map[string]interface{})
-	resp["id"] = strconv.FormatUint(user.Id, 10)
-	resp["username"] = user.Username
-	resp["image"] = user.Image
-	resp["email"] = user.Email
-	resp["phone"] = user.Phone
-	resp["skills"] = skills
-	resp["categories"] = categories
+	resp, err := GetUserData(user)
+
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -358,3 +336,5 @@ func FindAll(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
+
+// ToDo need add limit resp 20
