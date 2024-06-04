@@ -42,7 +42,7 @@ func Login(w http.ResponseWriter, r *http.Request, userLogin *UserLogin) error {
 	return nil
 }
 
-func Sign(user *UserLogin) error {
+func Sign(w http.ResponseWriter, r *http.Request, user *UserLogin) error {
 	var users []User
 
 	if err := DB.Where("Username = ?", user.Username).Find(&users).Error; err != nil {
@@ -58,7 +58,21 @@ func Sign(user *UserLogin) error {
 		return err
 	}
 
-	DB.Create(&User{Username: user.Username, Password: string(hashedPassword)})
+	newUser := User{Username: user.Username, Password: string(hashedPassword)}
+
+	session, _ := store.Get(r, "session-name")
+
+	if err := DB.Create(&newUser).Error; err != nil {
+		return err
+	}
+
+	session.Values["id"] = newUser.Id
+	session.Values["password"] = newUser.Password
+
+	if err := session.Save(r, w); err != nil {
+		return err
+	}
+
 	return err
 }
 

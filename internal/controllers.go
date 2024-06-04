@@ -20,10 +20,10 @@ func GetImageUser(c *gin.Context) {
 }
 
 func GetPriceSkills(c *gin.Context) {
-	loginUser, user := CheckSessionUser(c.Request)
+	var user User
 
-	if !loginUser {
-		c.Writer.WriteHeader(http.StatusUnauthorized)
+	if err := DB.First(&user, c.Query("userId")).Error; err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -144,7 +144,7 @@ func LoginUser(c *gin.Context) {
 
 	if err := Login(c.Writer, c.Request, &user); err != nil {
 		if err.Error() == "record not found" {
-			if err := Sign(&user); err != nil {
+			if err := Sign(c.Writer, c.Request, &user); err != nil {
 				resp["Login"] = "Error create user"
 				c.JSON(http.StatusBadRequest, resp)
 				return
