@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"errors"
 	"strconv"
 )
 
@@ -59,5 +60,58 @@ func GetUserData(user User) (map[string]interface{}, error) {
 	resp["skills"] = skills
 	resp["categories"] = categories
 
+	return resp, nil
+}
+
+type ReviewData struct {
+	Review string `json:"review"`
+	Rating uint8  `json:"rating"`
+	ToUser uint64 `json:"toUser"`
+}
+
+func CreateReviewUser(user User, reviewData ReviewData) (map[string]string, error) {
+	resp := make(map[string]string)
+
+	if reviewData.Rating > 100 || reviewData.Rating < 0 {
+		return resp, errors.New("rating should be no more than 100 and no less than 0")
+	}
+
+	var toUser User
+
+	if err := DB.Preload("Reviews").First(&toUser, reviewData.ToUser).Error; err != nil {
+		return resp, err
+	}
+
+	review := Review{Reviewer: user, Review: reviewData.Review, Rating: reviewData.Rating}
+
+	if err := DB.Create(&review).Error; err != nil {
+		return resp, err
+	}
+
+	if err := DB.Model(&toUser).Association("Reviews").Append(&review); err != nil {
+		return resp, err
+	}
+
+	var totalRating uint64
+	var reviewCount uint64
+
+	for _, r := range toUser.Reviews {
+		totalRating += uint64(r.Rating)
+		reviewCount++
+	}
+
+	if reviewCount > 0 {
+		toUser.Rating = uint8(totalRating / reviewCount)
+	} else {
+		toUser.Rating = 0
+	}
+
+	if err := DB.Save(&toUser).Error; err != nil {
+		return resp, err
+	}
+
+	resp["Created"] = "OK"
+	resp["NewRating"] = strconv.Itoa(int(toUser.Rating))
+	resp["Id"] = strconv.Itoa(int(review.Id))
 	return resp, nil
 }

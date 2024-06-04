@@ -10,6 +10,8 @@ func SetRouters(router *gin.Engine) {
 	router.GET("api/v1/user/getUser", GetUser)
 	router.GET("api/v1/user/getUserData/:userName", GetUserDataUnauthorized)
 	router.GET("api/v1/user/getPriceSkills", GetPriceSkills)
+	router.GET("api/v1/user/getReviews", GetReviews)
+	router.POST("api/v1/user/createReview", CreateReview)
 	router.POST("api/v1/user/changeUser", ChangeData)
 	router.POST("api/v1/user/setImage", SetUserImage)
 	router.POST("api/v1/user/login", LoginUser)

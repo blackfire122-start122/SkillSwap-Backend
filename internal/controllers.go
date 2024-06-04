@@ -46,6 +46,43 @@ func GetPriceSkills(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+func GetReviews(c *gin.Context) {
+	var user User
+	if err := DB.First(&user, c.Query("userId")).Error; err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := DB.Preload("Reviews").Find(&user).Error; err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp := make([]map[string]interface{}, 0)
+
+	for _, review := range user.Reviews {
+		if err := DB.Preload("Reviewer").Find(&review).Error; err != nil {
+			c.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		reviewer := make(map[string]interface{})
+		reviewer["id"] = review.Reviewer.Id
+		reviewer["username"] = review.Reviewer.Username
+
+		item := make(map[string]interface{})
+
+		item["id"] = review.Id
+		item["review"] = review.Review
+		item["rating"] = review.Rating
+		item["reviewer"] = reviewer
+
+		resp = append(resp, item)
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
 func GetUser(c *gin.Context) {
 	loginUser, user := CheckSessionUser(c.Request)
 
@@ -140,8 +177,7 @@ func LogoutUser(c *gin.Context) {
 func GetBestPerformers(c *gin.Context) {
 	var users []User
 
-	if err := DB.Find(&users).Error; err != nil {
-		fmt.Println(err)
+	if err := DB.Order("rating desc").Limit(10).Find(&users).Error; err != nil {
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -338,3 +374,33 @@ func FindAll(c *gin.Context) {
 }
 
 // ToDo need add limit resp 20
+
+func CreateReview(c *gin.Context) {
+	loginUser, user := CheckSessionUser(c.Request)
+
+	if !loginUser {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var reviewData ReviewData
+	bodyBytes, _ := io.ReadAll(c.Request.Body)
+
+	if err := json.Unmarshal(bodyBytes, &reviewData); err != nil {
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	resp, err := CreateReviewUser(user, reviewData)
+
+	if err != nil {
+		if err.Error() == "rating should be no more than 100 and no less than 0" {
+			c.Writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
