@@ -83,6 +83,42 @@ func GetReviews(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+//func GetMessages(c *gin.Context) {
+//	loginUser, user := CheckSessionUser(c.Request)
+//
+//	if !loginUser {
+//		c.Writer.WriteHeader(http.StatusUnauthorized)
+//		return
+//	}
+//
+//	if err := DB.Preload("Messages").Find(&user).Error; err != nil {
+//		c.Writer.WriteHeader(http.StatusInternalServerError)
+//		return
+//	}
+//
+//	resp := make([]map[string]interface{}, 0)
+//
+//	for _, message := range user.Messages {
+//		//if err := DB.Preload("Reviewer").Find(&review).Error; err != nil {
+//		//	c.Writer.WriteHeader(http.StatusInternalServerError)
+//		//	return
+//		//}
+//
+//		//reviewer := make(map[string]interface{})
+//		//reviewer["id"] = review.Reviewer.Id
+//		//reviewer["username"] = review.Reviewer.Username
+//		//
+//		//item := make(map[string]interface{})
+//
+//		item["id"] = message.ID
+//		item["review"] = message.ClientMessage
+//
+//		resp = append(resp, item)
+//	}
+//
+//	c.JSON(http.StatusOK, resp)
+//}
+
 func GetUser(c *gin.Context) {
 	loginUser, user := CheckSessionUser(c.Request)
 
@@ -398,6 +434,107 @@ func CreateReview(c *gin.Context) {
 			c.Writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func Order(c *gin.Context) {
+	loginUser, user := CheckSessionUser(c.Request)
+
+	if !loginUser {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var orderSkill OrderSkill
+	bodyBytes, _ := io.ReadAll(c.Request.Body)
+
+	if err := json.Unmarshal(bodyBytes, &orderSkill); err != nil {
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := CreateChat(user, orderSkill); err != nil {
+		fmt.Println(err)
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, nil)
+}
+
+func GetCustomerSkillChats(c *gin.Context) {
+	loginUser, user := CheckSessionUser(c.Request)
+
+	if !loginUser {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if err := DB.Preload("CustomerSkillChats").Find(&user).Error; err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp, err := GetChatsCustomerData(user.CustomerSkillChats)
+
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetPerformerSkillChats(c *gin.Context) {
+	loginUser, user := CheckSessionUser(c.Request)
+
+	if !loginUser {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if err := DB.Preload("PerformerSkillChats").Find(&user).Error; err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp, err := GetChatsPerformerData(user.PerformerSkillChats)
+
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetSkillChatMessages(c *gin.Context) {
+	loginUser, user := CheckSessionUser(c.Request)
+
+	if !loginUser {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var skillChat SkillChat
+
+	if err := DB.First(&skillChat, c.Query("chatId")).Preload("Messages").Error; err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if skillChat.CustomerID != user.Id && skillChat.PerformerID != user.Id {
+		c.Writer.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	resp, err := SkillChatMessages(skillChat)
+
+	if err != nil {
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}

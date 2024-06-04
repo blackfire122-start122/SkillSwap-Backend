@@ -20,6 +20,9 @@ type User struct {
 	Categories   []Category   `gorm:"many2many:categories_user;"`
 	PricesSkills []PriceSkill `gorm:"foreignKey:UserID;"`
 	Reviews      []Review     `gorm:"foreignKey:UserID;"`
+	//Messages     		 []UserMessage `gorm:"foreignKey:UserID;"`
+	CustomerSkillChats  []SkillChat `gorm:"foreignKey:CustomerID;"`
+	PerformerSkillChats []SkillChat `gorm:"foreignKey:PerformerID;"`
 }
 
 type Category struct {
@@ -53,6 +56,31 @@ type PriceSkill struct {
 	Price   uint64
 }
 
+//type UserMessage struct {
+//	gorm.Model
+//	UserID  uint64
+//	Message string
+//	Read    bool
+//}
+
+type Message struct {
+	gorm.Model
+	Message     string
+	Read        bool
+	UserID      uint64
+	User        User `gorm:"foreignKey:UserID;"`
+	SkillChatID uint64
+}
+
+type SkillChat struct {
+	gorm.Model
+	Messages    []Message `gorm:"foreignKey:SkillChatID;"`
+	SkillID     uint64
+	Skill       Skill `gorm:"foreignKey:SkillID;"`
+	CustomerID  uint64
+	PerformerID uint64
+}
+
 func init() {
 	db, err := gorm.Open(sqlite.Open("database.db"), &gorm.Config{}) //ToDo change on postgres
 	DB = db
@@ -61,7 +89,7 @@ func init() {
 		panic("failed to connect database")
 	}
 
-	err = DB.AutoMigrate(&User{}, &Category{}, Skill{}, PriceSkill{}, Review{})
+	err = DB.AutoMigrate(&User{}, &Category{}, Skill{}, PriceSkill{}, Review{}, SkillChat{})
 	if err != nil {
 		panic("Error autoMigrate: ")
 	}

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type Message struct {
+type ClientMessage struct {
 	Type    string      `json:"type"`
 	Content interface{} `json:"content"`
 }
@@ -49,7 +49,7 @@ func handleConnections(c *gin.Context) {
 	clients[client] = true
 
 	for {
-		var msg Message
+		var msg ClientMessage
 
 		err := conn.ReadJSON(&msg)
 
@@ -80,7 +80,7 @@ func handleConnections(c *gin.Context) {
 	}
 }
 
-//func sendInGroup(msg Message, client Client) error {
+//func sendInGroup(msg ClientMessage, client Client) error {
 //	for cl := range clients {
 //		if cl.RoomId == client.RoomId && cl != client {
 //			err := cl.Conn.WriteJSON(msg)

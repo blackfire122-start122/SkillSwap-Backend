@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"errors"
+	"gorm.io/gorm"
 	"strconv"
 )
 
@@ -113,5 +114,117 @@ func CreateReviewUser(user User, reviewData ReviewData) (map[string]string, erro
 	resp["Created"] = "OK"
 	resp["NewRating"] = strconv.Itoa(int(toUser.Rating))
 	resp["Id"] = strconv.Itoa(int(review.Id))
+	return resp, nil
+}
+
+type OrderSkill struct {
+	SkillId uint64 `json:"skillId"`
+	ToUser  uint64 `json:"toUser"`
+}
+
+func CreateChat(user User, orderSkill OrderSkill) error {
+	var toUser User
+	if err := DB.Preload("Skills").First(&toUser, orderSkill.ToUser).Error; err != nil {
+		return err
+	}
+
+	var skillFoundFlag = false
+	var skillFound Skill
+
+	for _, skill := range toUser.Skills {
+		if skill.Id == orderSkill.SkillId {
+			skillFoundFlag = true
+			skillFound = skill
+			break
+		}
+	}
+
+	if !skillFoundFlag {
+		return errors.New("skill not found")
+	}
+
+	return DB.Transaction(func(tx *gorm.DB) error {
+		skillChat := SkillChat{Skill: skillFound}
+		if err := tx.Create(&skillChat).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(&user).Association("CustomerSkillChats").Append(&skillChat); err != nil {
+			return err
+		}
+
+		if err := tx.Model(&toUser).Association("PerformerSkillChats").Append(&skillChat); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func GetChatsCustomerData(chats []SkillChat) ([]map[string]interface{}, error) {
+	resp := make([]map[string]interface{}, 0)
+	for _, chat := range chats {
+		if err := DB.Preload("Skill").First(&chat).Error; err != nil {
+			return resp, err
+		}
+
+		item := make(map[string]interface{})
+		item["id"] = chat.ID
+
+		skillItem := make(map[string]interface{})
+		skillItem["id"] = chat.Skill.Id
+		skillItem["name"] = chat.Skill.Name
+
+		item["skill"] = skillItem
+
+		var performer User
+		if err := DB.First(&performer, chat.PerformerID).Error; err != nil {
+			return resp, err
+		}
+
+		item["performer"] = performer
+
+		resp = append(resp, item)
+	}
+	return resp, nil
+}
+
+func GetChatsPerformerData(chats []SkillChat) ([]map[string]interface{}, error) {
+	resp := make([]map[string]interface{}, 0)
+	for _, chat := range chats {
+		if err := DB.Preload("Skill").First(&chat).Error; err != nil {
+			return resp, err
+		}
+
+		item := make(map[string]interface{})
+		item["id"] = chat.ID
+
+		skillItem := make(map[string]interface{})
+		skillItem["id"] = chat.Skill.Id
+		skillItem["name"] = chat.Skill.Name
+
+		item["skill"] = skillItem
+
+		var customer User
+		if err := DB.First(&customer, chat.CustomerID).Error; err != nil {
+			return resp, err
+		}
+
+		item["customer"] = customer
+
+		resp = append(resp, item)
+	}
+	return resp, nil
+}
+
+func SkillChatMessages(chat SkillChat) ([]map[string]interface{}, error) {
+	resp := make([]map[string]interface{}, 0)
+	for _, message := range chat.Messages {
+		item := make(map[string]interface{})
+		item["id"] = message.ID
+		item["message"] = message.Message
+		item["userId"] = message.UserID
+		resp = append(resp, item)
+	}
 	return resp, nil
 }
