@@ -214,7 +214,7 @@ func LogoutUser(c *gin.Context) {
 func GetBestPerformers(c *gin.Context) {
 	var users []User
 
-	if err := DB.Order("rating desc").Limit(10).Find(&users).Error; err != nil {
+	if err := DB.Order("rating desc").Limit(20).Find(&users).Error; err != nil {
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -458,13 +458,19 @@ func Order(c *gin.Context) {
 		return
 	}
 
-	if err := CreateChat(user, orderSkill); err != nil {
+	resp, err := CreateChat(user, orderSkill)
+
+	if err != nil {
+		if err.Error() == "chat already exists" {
+			c.JSON(http.StatusAlreadyReported, resp)
+			return
+		}
 		fmt.Println(err)
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusOK, nil)
+	c.JSON(http.StatusOK, resp)
 }
 
 func GetCustomerSkillChats(c *gin.Context) {

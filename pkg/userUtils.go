@@ -2,8 +2,9 @@ package pkg
 
 import (
 	"errors"
-	"gorm.io/gorm"
 	"strconv"
+
+	"gorm.io/gorm"
 )
 
 func GetUserData(user User) (map[string]interface{}, error) {
@@ -122,10 +123,18 @@ type OrderSkill struct {
 	ToUser  uint64 `json:"toUser"`
 }
 
-func CreateChat(user User, orderSkill OrderSkill) error {
+func CreateChat(user User, orderSkill OrderSkill) (map[string]interface{}, error) {
+	resp := make(map[string]interface{})
 	var toUser User
-	if err := DB.Preload("Skills").First(&toUser, orderSkill.ToUser).Error; err != nil {
-		return err
+	if err := DB.Preload("Skills").Preload("PerformerSkillChats").First(&toUser, orderSkill.ToUser).Error; err != nil {
+		return resp, err
+	}
+
+	for _, chat := range toUser.PerformerSkillChats {
+		if chat.CustomerID == user.Id && chat.SkillID == orderSkill.SkillId {
+			resp["chatId"] = chat.ID
+			return resp, errors.New("chat already exists")
+		}
 	}
 
 	var skillFoundFlag = false
@@ -140,11 +149,12 @@ func CreateChat(user User, orderSkill OrderSkill) error {
 	}
 
 	if !skillFoundFlag {
-		return errors.New("skill not found")
+		return resp, errors.New("skill not found")
 	}
 
-	return DB.Transaction(func(tx *gorm.DB) error {
+	err := DB.Transaction(func(tx *gorm.DB) error {
 		skillChat := SkillChat{Skill: skillFound}
+
 		if err := tx.Create(&skillChat).Error; err != nil {
 			return err
 		}
@@ -157,8 +167,15 @@ func CreateChat(user User, orderSkill OrderSkill) error {
 			return err
 		}
 
+		resp["chatId"] = skillChat.ID
 		return nil
 	})
+
+	if err != nil {
+		return resp, err
+	}
+
+	return resp, nil
 }
 
 func GetChatsCustomerData(chats []SkillChat) ([]map[string]interface{}, error) {
