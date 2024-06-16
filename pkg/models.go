@@ -89,7 +89,7 @@ func init() {
 		panic("failed to connect database")
 	}
 
-	err = DB.AutoMigrate(&User{}, &Category{}, Skill{}, PriceSkill{}, Review{}, SkillChat{})
+	err = DB.AutoMigrate(&User{}, &Category{}, Skill{}, PriceSkill{}, Review{}, SkillChat{}, Message{})
 	if err != nil {
 		panic("Error autoMigrate: ")
 	}

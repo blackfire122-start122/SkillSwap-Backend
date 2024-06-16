@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func GetImageUser(c *gin.Context) {
@@ -520,9 +521,18 @@ func GetSkillChatMessages(c *gin.Context) {
 		return
 	}
 
+	countMessages, err := strconv.ParseUint(c.Query("countMessages"), 10, 64)
+
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	var skillChat SkillChat
 
-	if err := DB.First(&skillChat, c.Query("chatId")).Preload("Messages").Error; err != nil {
+	if err := DB.Preload("Messages", func(db *gorm.DB) *gorm.DB {
+		return db.Order("created_at DESC").Offset(int(countMessages)).Limit(20)
+	}).First(&skillChat, c.Query("chatId")).Error; err != nil {
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
