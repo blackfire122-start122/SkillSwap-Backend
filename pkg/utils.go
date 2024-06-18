@@ -3,13 +3,14 @@ package pkg
 import (
 	"crypto/rand"
 	"errors"
-	"github.com/gorilla/sessions"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 	"math/big"
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/gorilla/sessions"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 var store = sessions.NewCookieStore([]byte(os.Getenv("SECRET_KEY")))

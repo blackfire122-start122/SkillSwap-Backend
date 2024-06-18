@@ -6,22 +6,12 @@ import (
 
 func FindUsers(find string) ([]map[string]string, error) {
 	var users []User
-	usersResp := make([]map[string]string, 0)
 
 	if err := DB.Where("LOWER(username) LIKE ?", "%"+find+"%").Find(&users).Error; err != nil {
-		return usersResp, err
+		return nil, err
 	}
 
-	for _, user := range users {
-		item := make(map[string]string)
-
-		item["id"] = strconv.FormatUint(user.Id, 10)
-		item["username"] = user.Username
-		item["rating"] = strconv.Itoa(int(user.Rating))
-		item["image"] = user.Image
-
-		usersResp = append(usersResp, item)
-	}
+	usersResp := GenerateJsonObjectUsers(users)
 
 	return usersResp, nil
 }

@@ -16,6 +16,8 @@ type User struct {
 	Phone        string
 	Image        string
 	Rating       uint8
+	CityID       uint64
+	City         City         `gorm:"foreignKey:CityID;"`
 	Skills       []Skill      `gorm:"many2many:user_skills;"`
 	Categories   []Category   `gorm:"many2many:categories_user;"`
 	PricesSkills []PriceSkill `gorm:"foreignKey:UserID;"`
@@ -81,6 +83,11 @@ type SkillChat struct {
 	PerformerID uint64
 }
 
+type City struct {
+	gorm.Model
+	Name string
+}
+
 func init() {
 	db, err := gorm.Open(sqlite.Open("database.db"), &gorm.Config{}) //ToDo change on postgres
 	DB = db
@@ -89,7 +96,17 @@ func init() {
 		panic("failed to connect database")
 	}
 
-	err = DB.AutoMigrate(&User{}, &Category{}, Skill{}, PriceSkill{}, Review{}, SkillChat{}, Message{})
+	err = DB.AutoMigrate(
+		User{},
+		Category{},
+		Skill{},
+		PriceSkill{},
+		Review{},
+		SkillChat{},
+		Message{},
+		City{},
+	)
+
 	if err != nil {
 		panic("Error autoMigrate: ")
 	}

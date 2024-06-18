@@ -245,3 +245,20 @@ func SkillChatMessages(chat SkillChat) ([]map[string]interface{}, error) {
 	}
 	return resp, nil
 }
+
+func GenerateJsonObjectUsers(users []User) []map[string]string {
+	resp := make([]map[string]string, 0)
+
+	for _, user := range users {
+		item := make(map[string]string)
+
+		item["id"] = strconv.FormatUint(user.Id, 10)
+		item["username"] = user.Username
+		item["rating"] = strconv.Itoa(int(user.Rating))
+		item["image"] = user.Image
+
+		resp = append(resp, item)
+	}
+
+	return resp
+}

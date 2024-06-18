@@ -219,17 +219,7 @@ func GetBestPerformers(c *gin.Context) {
 		return
 	}
 
-	resp := make([]map[string]string, 0)
-
-	for _, user := range users {
-		item := make(map[string]string)
-		item["id"] = strconv.FormatUint(user.Id, 10)
-		item["username"] = user.Username
-		item["image"] = user.Image
-		item["rating"] = strconv.Itoa(int(user.Rating))
-
-		resp = append(resp, item)
-	}
+	resp := GenerateJsonObjectUsers(users)
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -554,6 +544,38 @@ func GetSkillChatMessages(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func FindUsersOnCategory(c *gin.Context) {
+	categoryId := c.Query("categoryId")
+
+	var users []User
+
+	if err := DB.Limit(20).Joins("JOIN categories_user ON categories_user.user_id = users.id").
+		Where("categories_user.category_id = ?", categoryId).Find(&users).Error; err != nil {
+		c.Writer.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	resp := GenerateJsonObjectUsers(users)
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func FindUsersOnSkill(c *gin.Context) {
+	skillId := c.Query("skillId")
+
+	var users []User
+
+	if err := DB.Limit(20).Joins("JOIN user_skills ON user_skills.user_id = users.id").
+		Where("user_skills.skill_id = ?", skillId).Find(&users).Error; err != nil {
+		c.Writer.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	resp := GenerateJsonObjectUsers(users)
 
 	c.JSON(http.StatusOK, resp)
 }
