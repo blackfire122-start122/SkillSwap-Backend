@@ -1,7 +1,7 @@
 package internal
 
 import (
-	. "SkillSwap/pkg"
+	"SkillSwap/pkg"
 	"fmt"
 	"net/http"
 	"time"
@@ -27,7 +27,7 @@ var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 var clients = make(map[Client]bool)
 
 func handleConnections(c *gin.Context) {
-	loginUser, user := CheckSessionUser(c.Request)
+	loginUser, user := pkg.CheckSessionUser(c.Request)
 
 	if !loginUser {
 		c.Writer.WriteHeader(http.StatusUnauthorized)
@@ -49,9 +49,9 @@ func handleConnections(c *gin.Context) {
 		return
 	}
 
-	var chat SkillChat
+	var chat pkg.SkillChat
 
-	if err := DB.Where("id=?", roomId).First(&chat).Error; err != nil {
+	if err := pkg.DB.Where("id=?", roomId).First(&chat).Error; err != nil {
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -83,14 +83,14 @@ func handleConnections(c *gin.Context) {
 				return
 			}
 
-			message := Message{Message: content, Read: false, User: user}
-			if err := DB.Create(&message).Error; err != nil {
+			message := pkg.Message{Message: content, Read: false, User: user}
+			if err := pkg.DB.Create(&message).Error; err != nil {
 				fmt.Println(err)
 				delete(clients, client)
 				return
 			}
 
-			err := DB.Model(&chat).Association("Messages").Append(&message)
+			err := pkg.DB.Model(&chat).Association("Messages").Append(&message)
 			if err != nil {
 				delete(clients, client)
 				return
