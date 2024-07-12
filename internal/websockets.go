@@ -110,15 +110,14 @@ func handleConnections(c *gin.Context) {
 				delete(clients, client)
 				return
 			}
+		} else if msg.Type == "changeStatus" {
+			err = sendInGroup(msg, client)
+			if err != nil {
+				fmt.Println(err)
+				delete(clients, client)
+				return
+			}
 		}
-		//if msg.Type == "move" {
-		//	err = sendInGroup(msg, client)
-		//	if err != nil {
-		//		fmt.Println(err)
-		//		delete(clients, client)
-		//		return
-		//	}
-		//}
 	}
 }
 

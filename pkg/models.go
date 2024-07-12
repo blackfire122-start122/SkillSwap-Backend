@@ -76,11 +76,18 @@ type Message struct {
 
 type SkillChat struct {
 	gorm.Model
+	Status      Status `gorm:"foreignKey:StatusID;"`
+	StatusID    uint64
 	Messages    []Message `gorm:"foreignKey:SkillChatID;"`
 	SkillID     uint64
 	Skill       Skill `gorm:"foreignKey:SkillID;"`
 	CustomerID  uint64
 	PerformerID uint64
+}
+
+type Status struct {
+	gorm.Model
+	Status string
 }
 
 type City struct {
@@ -105,7 +112,10 @@ func init() {
 		SkillChat{},
 		Message{},
 		City{},
+		Status{},
 	)
+
+	CreateDefaultModelData()
 
 	if err != nil {
 		panic("Error autoMigrate: ")

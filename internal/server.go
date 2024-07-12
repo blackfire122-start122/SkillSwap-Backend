@@ -16,6 +16,7 @@ func SetRouters(router *gin.Engine) {
 	router.GET("api/v1/user/customerSkillChats", controllers.GetCustomerSkillChats)
 	router.GET("api/v1/user/performerSkillChats", controllers.GetPerformerSkillChats)
 	router.GET("api/v1/user/skillChatMessages", controllers.GetSkillChatMessages)
+	router.GET("api/v1/user/getChat", controllers.GetChat)
 	router.POST("api/v1/user/createReview", controllers.CreateReview)
 	router.POST("api/v1/user/changeUser", controllers.ChangeData)
 	router.POST("api/v1/user/setImage", controllers.SetUserImage)
@@ -28,6 +29,8 @@ func SetRouters(router *gin.Engine) {
 	router.GET("api/v1/findCategories", controllers.FindCategories)
 	router.GET("api/v1/findUsersOnCategory", controllers.FindUsersOnCategory)
 	router.GET("api/v1/findUsersOnSkill", controllers.FindUsersOnSkill)
+	router.GET("api/v1/chat/getStatuses", controllers.GetStatuses)
+	router.PUT("api/v1/chat/setStatus", controllers.SetStatus)
 
 	router.GET("chat/:roomId", handleConnections)
 }

@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"gorm.io/gorm"
@@ -153,7 +154,12 @@ func CreateChat(user User, orderSkill OrderSkill) (map[string]interface{}, error
 	}
 
 	err := DB.Transaction(func(tx *gorm.DB) error {
-		skillChat := SkillChat{Skill: skillFound}
+		var status Status
+		if err := DB.First(&status).Where("status=?", DiscussionOfDetails).Error; err != nil {
+			fmt.Println(err)
+		}
+
+		skillChat := SkillChat{Skill: skillFound, Status: status}
 
 		if err := tx.Create(&skillChat).Error; err != nil {
 			return err
@@ -261,4 +267,24 @@ func GenerateJsonObjectUsers(users []User) []map[string]string {
 	}
 
 	return resp
+}
+
+func GetSkillChatData(chatId uint64, user User) (map[string]interface{}, error) {
+	var skillChat SkillChat
+	resp := make(map[string]interface{})
+
+	if err := DB.Preload("Status").First(&skillChat, chatId).Error; err != nil {
+		return resp, err
+	}
+
+	if skillChat.CustomerID != user.Id && skillChat.PerformerID != user.Id {
+		return resp, errors.New("Forbidden")
+	}
+
+	resp["id"] = skillChat.ID
+	resp["status"] = skillChat.Status.Status
+	resp["performerID"] = skillChat.PerformerID
+	resp["customerID"] = skillChat.CustomerID
+
+	return resp, nil
 }

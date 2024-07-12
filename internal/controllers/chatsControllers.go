@@ -127,3 +127,70 @@ func GetSkillChatMessages(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
+
+func GetChat(c *gin.Context) {
+	loginUser, user := pkg.CheckSessionUser(c.Request)
+
+	if !loginUser {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	chatId, err := strconv.ParseUint(c.Query("chatId"), 10, 64)
+
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	resp, err := pkg.GetSkillChatData(chatId, user)
+
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetStatuses(c *gin.Context) {
+	loginUser, _ := pkg.CheckSessionUser(c.Request)
+
+	if !loginUser {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	resp, err := pkg.GetStatusesData()
+
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func SetStatus(c *gin.Context) {
+	loginUser, user := pkg.CheckSessionUser(c.Request)
+
+	if !loginUser {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var putStatusRequest pkg.PutStatusRequest
+	bodyBytes, _ := io.ReadAll(c.Request.Body)
+
+	if err := json.Unmarshal(bodyBytes, &putStatusRequest); err != nil {
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := pkg.SetStatusChat(user, putStatusRequest); err != nil {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.Writer.WriteHeader(http.StatusOK)
+}
