@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -90,6 +91,9 @@ func GetPerformerSkillChats(c *gin.Context) {
 }
 
 func GetSkillChatMessages(c *gin.Context) {
+	const MAX_MESSAGES_FROM_DB = 20
+	const MAX_MESSAGES_FROM_REDIS_WITH_DB = 100
+
 	loginUser, user := pkg.CheckSessionUser(c.Request)
 
 	if !loginUser {
@@ -104,11 +108,28 @@ func GetSkillChatMessages(c *gin.Context) {
 		return
 	}
 
+	chatId, err := strconv.ParseUint(c.Query("chatId"), 10, 64)
+
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	messagesFromRedis := pkg.GetChatRedisMessages(chatId)
+	countMessagesFromRedis := len(messagesFromRedis)
+	needRedisMessages := countMessagesFromRedis - int(countMessages)
+
+	if needRedisMessages > 0 {
+		messagesFromRedis = messagesFromRedis[countMessagesFromRedis-needRedisMessages:]
+	} else {
+		messagesFromRedis = []pkg.Message{}
+	}
+
 	var skillChat pkg.SkillChat
 
 	if err := pkg.DB.Preload("Messages", func(db *gorm.DB) *gorm.DB {
-		return db.Order("created_at DESC").Offset(int(countMessages)).Limit(20)
-	}).First(&skillChat, c.Query("chatId")).Error; err != nil {
+		return db.Order("created_at DESC").Offset(int(countMessages) - countMessagesFromRedis).Limit(MAX_MESSAGES_FROM_DB)
+	}).First(&skillChat, chatId).Error; err != nil {
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -118,8 +139,22 @@ func GetSkillChatMessages(c *gin.Context) {
 		return
 	}
 
-	resp, err := pkg.SkillChatMessages(skillChat)
+	allMessages := append(skillChat.Messages, messagesFromRedis...)
 
+	sort.Slice(allMessages, func(i, j int) bool {
+		return allMessages[i].CreatedAt.After(allMessages[j].CreatedAt)
+	})
+
+	end := MAX_MESSAGES_FROM_REDIS_WITH_DB
+	if end > len(allMessages) {
+		end = len(allMessages)
+	}
+
+	messages := allMessages[:end]
+
+	skillChat.Messages = messages
+
+	resp, err := pkg.SkillChatMessages(skillChat)
 	if err != nil {
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return

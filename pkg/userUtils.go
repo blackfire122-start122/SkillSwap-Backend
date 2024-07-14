@@ -240,18 +240,6 @@ func GetChatsPerformerData(chats []SkillChat) ([]map[string]interface{}, error) 
 	return resp, nil
 }
 
-func SkillChatMessages(chat SkillChat) ([]map[string]interface{}, error) {
-	resp := make([]map[string]interface{}, 0)
-	for _, message := range chat.Messages {
-		item := make(map[string]interface{})
-		item["id"] = message.ID
-		item["message"] = message.Message
-		item["userId"] = message.UserID
-		resp = append(resp, item)
-	}
-	return resp, nil
-}
-
 func GenerateJsonObjectUsers(users []User) []map[string]string {
 	resp := make([]map[string]string, 0)
 
@@ -267,24 +255,4 @@ func GenerateJsonObjectUsers(users []User) []map[string]string {
 	}
 
 	return resp
-}
-
-func GetSkillChatData(chatId uint64, user User) (map[string]interface{}, error) {
-	var skillChat SkillChat
-	resp := make(map[string]interface{})
-
-	if err := DB.Preload("Status").First(&skillChat, chatId).Error; err != nil {
-		return resp, err
-	}
-
-	if skillChat.CustomerID != user.Id && skillChat.PerformerID != user.Id {
-		return resp, errors.New("Forbidden")
-	}
-
-	resp["id"] = skillChat.ID
-	resp["status"] = skillChat.Status.Status
-	resp["performerID"] = skillChat.PerformerID
-	resp["customerID"] = skillChat.CustomerID
-
-	return resp, nil
 }
