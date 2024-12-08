@@ -85,13 +85,28 @@ func CreateReviewUser(user User, reviewData ReviewData) (map[string]string, erro
 		return resp, err
 	}
 
-	review := Review{Reviewer: user, Review: reviewData.Review, Rating: reviewData.Rating}
+	var review Review
 
-	if err := DB.Create(&review).Error; err != nil {
-		return resp, err
-	}
+	if err := DB.Where("reviewer_id = ? AND user_id = ?", user.Id, toUser.Id).First(&review).Error; err == nil {
+		review.Rating = reviewData.Rating
+		review.Review = reviewData.Review
+		if err := DB.Save(&review).Error; err != nil {
+			return resp, err
+		}
+		if err := DB.Model(&toUser).Association("Reviews").Replace(&review); err != nil {
+			return resp, err
+		}
+	} else if errors.Is(err, gorm.ErrRecordNotFound) {
+		review = Review{Reviewer: user, Review: reviewData.Review, Rating: reviewData.Rating}
 
-	if err := DB.Model(&toUser).Association("Reviews").Append(&review); err != nil {
+		if err := DB.Create(&review).Error; err != nil {
+			return resp, err
+		}
+
+		if err := DB.Model(&toUser).Association("Reviews").Append(&review); err != nil {
+			return resp, err
+		}
+	} else {
 		return resp, err
 	}
 

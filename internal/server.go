@@ -12,7 +12,7 @@ func SetRouters(router *gin.Engine) {
 	router.GET("api/v1/user/getUserData/:userName", controllers.GetUserDataUnauthorized)
 	router.GET("api/v1/user/getPriceSkills", controllers.GetPriceSkills)
 	router.GET("api/v1/user/getReviews", controllers.GetReviews)
-	//router.GET("api/v1/user/getMessages", GetMessages)
+	// router.GET("api/v1/user/getMessages", GetMessages)
 	router.GET("api/v1/user/customerSkillChats", controllers.GetCustomerSkillChats)
 	router.GET("api/v1/user/performerSkillChats", controllers.GetPerformerSkillChats)
 	router.GET("api/v1/user/skillChatMessages", controllers.GetSkillChatMessages)

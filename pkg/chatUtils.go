@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -67,4 +68,75 @@ func GetChatRedisMessages(chatId uint64) []Message {
 	}
 
 	return messagesFromRedis
+}
+
+func SaveMessagesToDB() {
+	const batchSize = 100
+	for {
+		messages, err := RedisClient.LRange(Ctx, "chat_messages", 0, batchSize-1).Result()
+		if err != nil {
+			fmt.Println("redis lrange error", err)
+			time.Sleep(5 * time.Minute)
+			continue
+		}
+
+		if len(messages) == 0 {
+			time.Sleep(5 * time.Minute)
+			continue
+		}
+
+		if err := RedisClient.LTrim(Ctx, "chat_messages", int64(batchSize), -1).Err(); err != nil {
+			fmt.Println("redis ltrim error", err)
+			time.Sleep(5 * time.Minute)
+			continue
+		}
+
+		var redisMessages []RedisMessage
+		for _, messageJSON := range messages {
+			var redisMessage RedisMessage
+			if err := json.Unmarshal([]byte(messageJSON), &redisMessage); err != nil {
+				fmt.Println("json unmarshal error", err)
+				continue
+			}
+			redisMessages = append(redisMessages, redisMessage)
+		}
+
+		tx := DB.Begin()
+		if tx.Error != nil {
+			fmt.Println("db transaction begin error", tx.Error)
+			continue
+		}
+
+		for _, redisMessage := range redisMessages {
+			message := Message{
+				Model:   gorm.Model{CreatedAt: redisMessage.CreatedAt},
+				Message: redisMessage.Message,
+				Read:    false,
+				UserID:  redisMessage.UserId,
+			}
+
+			if err := tx.Create(&message).Error; err != nil {
+				fmt.Println("db create error", err)
+				tx.Rollback()
+				break
+			}
+
+			var chat SkillChat
+			if err := tx.First(&chat, redisMessage.ChatId).Error; err != nil {
+				fmt.Println("db find chat error", err)
+				tx.Rollback()
+				break
+			}
+
+			if err := tx.Model(&chat).Association("Messages").Append(&message); err != nil {
+				fmt.Println("db append message error", err)
+				tx.Rollback()
+				break
+			}
+		}
+
+		if err := tx.Commit().Error; err != nil {
+			fmt.Println("db transaction commit error", err)
+		}
+	}
 }

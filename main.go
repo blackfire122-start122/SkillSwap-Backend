@@ -2,6 +2,7 @@ package main
 
 import (
 	"SkillSwap/internal"
+	"SkillSwap/pkg"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +31,7 @@ func main() {
 	router.Use(CORSMiddleware())
 	internal.SetRouters(router)
 	go internal.SendPing()
-	go internal.SaveMessagesToDB()
+	go pkg.SaveMessagesToDB()
 	err := router.Run("localhost:8080")
 	if err != nil {
 		fmt.Println(err.Error())
